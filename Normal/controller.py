@@ -36,7 +36,7 @@ class Controller:
     def __init__(self, kp, kd):
         self.__kp = kp
         self.__kd = kd
-        self.__LANEWIGHT = 55            # Độ rộng đường (pixel)
+        self.__LANEWIGHT = 70            # Độ rộng đường (pixel)
 
         self.mode = 0
 

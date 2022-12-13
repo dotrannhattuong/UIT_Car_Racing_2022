@@ -88,7 +88,7 @@ def parse_args():
 def loop_and_detect(cam, trt_yolo, conf_th, vis):
     fps = 0.02
     start_time_detect=time.time()
-    
+    frame = 0
     while True:
         tic = time.time()
         img = cam.read()                    #đọc ảnh từ camera
@@ -103,18 +103,22 @@ def loop_and_detect(cam, trt_yolo, conf_th, vis):
         DAsegmentation = remove_small_contours(DAsegmentation)
 
         #### Object Detection ####
-        # boxes, confs, clss = trt_yolo.detect(img, conf_th)              #trả về boxes: chứa tọa độ bounding box, phần trăm dự đoán, và phân lớp
-        # if(len(confs)>0):                                               #nếu nhận diện được biển báo
-        #     #chỉ lấy ra đối tượng có phần trăm dự đoán cao nhất
-        #     index=np.argmax(confs)
-        #     confs = [confs[index]]
-            
-        #     #### Class Name ####
-        #     clss = [clss[index]]
+        if frame % 2 == 0:
+            boxes, confs, clss = trt_yolo.detect(img, conf_th)              #trả về boxes: chứa tọa độ bounding box, phần trăm dự đoán, và phân lớp
+            if(len(confs)>0):                                               #nếu nhận diện được biển báo
+                #chỉ lấy ra đối tượng có phần trăm dự đoán cao nhất
+                index=np.argmax(confs)
+                confs = [confs[index]]
+                
+                #### Class Name ####
+                clss = [clss[index]]
 
-        # # hàm vẽ bounding box lên ảnh, trả về ảnh đã vẽ, center của các đối tượng, phân lớp, và diện tích của boundingbox
-        # img, centers, class_TS, area = vis.draw_bboxes(
-        #     img, boxes, confs, clss, session=session_sign, inputname=input_name_sign)
+            # hàm vẽ bounding box lên ảnh, trả về ảnh đã vẽ, center của các đối tượng, phân lớp, và diện tích của boundingbox
+            img, centers, class_TS, area = vis.draw_bboxes(
+                img, boxes, confs, clss, session=session_sign, inputname=input_name_sign)
+        else:
+            class_TS, area = None, -1
+
         
         # if (len(centers) > 0):                                                      # nếu phát hiện đối tượng                                                                
         #     # phải sau 2s so với lần xử lý biển báo trước thì mới cho xử lý biển báo tiếp theo 
@@ -129,6 +133,7 @@ def loop_and_detect(cam, trt_yolo, conf_th, vis):
         
         ############# Control Car ############# 
         # img = show_fps(img, fps)
+
         # if class_TS == 'None':
         #     pred = np.copy(DAsegmentation)
         # else:
@@ -139,15 +144,18 @@ def loop_and_detect(cam, trt_yolo, conf_th, vis):
         #     _, canny_image = cv2.threshold(canny_image, 150, 255, cv2.THRESH_BINARY)
         #     pred = cv2.Canny(canny_image, 80, 255)
         #     # cv2.imshow('edge',canny_image)
+
         pred = np.copy(DAsegmentation)
 
-        sendBack_angle, sendBack_speed = Control(pred, sendBack_speed=30, height=10, signal='None', area=-1)
+        print('1111111111111111')
+        sendBack_angle, sendBack_speed = Control(pred, sendBack_speed=28, height=10, signal=class_TS, area=area)
+        print('22222222222222
 
         #####------Show hình-----------------------
-        # if SHOW_IMG:
+        if SHOW_IMG:
             # img[:DAsegmentation.shape[0],img.shape[1]-DAsegmentation.shape[1]:,:]=DAsegmentation
-            # cv2.imshow('merge',img)
-
+            cv2.imshow('merge',img)
+        frame += 1
         toc = time.time()
         fps = 1.0 / (toc - tic)
         key = cv2.waitKey(1)

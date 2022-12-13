@@ -36,7 +36,7 @@ class Controller:
     def __init__(self, kp, kd):
         self.__kp = kp
         self.__kd = kd
-        self.__LANEWIGHT = 55            # Độ rộng đường (pixel)
+        self.__LANEWIGHT = 70            # Độ rộng đường (pixel)
 
         self.mode = 0
         self.__turn_mode = 'None'
@@ -90,7 +90,7 @@ class Controller:
         Car.OLED_Print(f"{self.maxLane}", line = 2, left = 0)
         Car.OLED_Print(f"{self.__turn_mode}", line = 3, left = 0)
     
-    def __timer_intersection(self):
+    def __timer_intersection(self, dis_straight):
         CurrentPos = Car.getPosition_rad()
         print("Start Pos ", CurrentPos)
         while(Car.getPosition_rad() - CurrentPos < dis_straight):
@@ -112,11 +112,11 @@ class Controller:
             else:
                 Car.setMotorMode(0)
                 if self.__turn_mode == 'straight':
-                    self.__straight(dis_straight=300)
+                    self.__straight(dis_straight=30)
                 elif self.__turn_mode == 'left':
-                    self.__turnleft(dis_straight=300)
+                    self.__turnleft(dis_straight=30)
                 else:
-                    self.__turnright(dis_straight=300)
+                    self.__turnright(dis_straight=30)
         else:
             Car.setAngle(0)
             Car.setSpeed_rad(0)
@@ -125,22 +125,22 @@ class Controller:
         Car.setSpeed_rad(velo)
         Car.setAngle(-50)
 
-        self.__timer_intersection()
+        self.__timer_intersection(dis_straight)
 
     def __turnleft(self, dis_straight, velo=15):
         Car.setSpeed_rad(velo)
         Car.setAngle(50)
 
-        self.__timer_intersection()
+        self.__timer_intersection(dis_straight)
     
-    def __straight(self, dis_straight, velo=30):
+    def __straight(self, dis_straight, velo=15):
         Car.setSpeed_rad(velo)
-        Car.setAngle(0)
+        Car.setAngle(5)
 
-        self.__timer_intersection()
+        self.__timer_intersection(dis_straight)
 
     def __linear(self, error):
-        return -0.1875*abs(error) + 30
+        return int(-0.1625*abs(error) + 28)
 
     def __call__(self, frame, sendBack_speed, height, signal, area):
         ####### Angle Processing #######
@@ -148,40 +148,40 @@ class Controller:
         sendBack_angle = self.__PID(self.error)
 
         ####### Speed Processing #######
-        if self.error > 20:
-            sendBack_speed = 15
-        # sendBack_speed = self.__linear(self.error)
+        sendBack_speed = self.__linear(self.error)
 
         ####### Show Info #######
-        self.__show(signal, area)
+        # self.__show(signal, area)
 
         #### Traffic Sign Processing ####
-        # if signal != 'None':
-        #     sendBack_speed = 15
+        if signal != 'None':
+            sendBack_speed = 15
 
-        # self.__turn_mode = 'None'
-        # if area > 3500:
-        #     if signal == 'camtrai':
-        #         if 80 <= self.maxLane <= 150:
-        #             self.__turn_mode = 'straight'
-        #         else:
-        #             self.__turn_mode = 'right'
-        #     elif signal == 'camphai':
-        #         if 10 <= self.minLane <= 80:
-        #             self.__turn_mode = 'straight'
-        #         else:
-        #             self.__turn_mode = 'left'
-        #     elif signal == 'camthang':
-        #         if 80 <= self.maxLane <= 150:
-        #             self.__turn_mode = 'left'
-        #         else:
-        #             self.__turn_mode = 'right'
-        #     elif signal == 'phai':
-        #         self.__turn_mode = 'right'
-        #     elif signal == 'trai':
-        #         self.__turn_mode = 'left'
-        #     elif signal == 'thang':
-        #         self.__turn_mode = 'straight'
+        self.__turn_mode = 'None'
+        
+        if area > 2400:
+            print(signal, area)
+            if signal == 'camtrai':
+                if 80 <= self.maxLane <= 150:
+                    self.__turn_mode = 'straight'
+                else:
+                    self.__turn_mode = 'right'
+            elif signal == 'camphai':
+                if 10 <= self.minLane <= 80:
+                    self.__turn_mode = 'straight'
+                else:
+                    self.__turn_mode = 'left'
+            elif signal == 'camthang':
+                if 80 <= self.maxLane <= 150:
+                    self.__turn_mode = 'left'
+                else:
+                    self.__turn_mode = 'right'
+            elif signal == 'phai':
+                self.__turn_mode = 'right'
+            elif signal == 'trai':
+                self.__turn_mode = 'left'
+            elif signal == 'thang':
+                self.__turn_mode = 'straight'
 
         ####### Start-Stop #######
         self.__start_stop(sendBack_angle, sendBack_speed)
