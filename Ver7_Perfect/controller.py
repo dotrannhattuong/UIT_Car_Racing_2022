@@ -20,7 +20,6 @@ def road_lines(image, session, inputname):
 	# Crop ảnh lại, lấy phần ảnh có làn đườngs
 	image = image[200:, :, :]
 	small_img = cv2.resize(image, (image.shape[1]//4, image.shape[0]//4))
-	# cv2.imshow('image',small_img)
 	small_img = small_img/255
 	small_img = np.array(small_img, dtype=np.float32)
 	small_img = small_img[None, :, :, :]
@@ -55,6 +54,7 @@ class Controller:
         self.__kp = kp
         self.__kd = kd
         self.__LANEWIGHT = 70            # Độ rộng đường (pixel)
+        self.width = 70
 
         self.mode = 0
         self.__turn_mode = 'None'
@@ -79,22 +79,23 @@ class Controller:
         center = int((self.minLane + self.maxLane) / 2)
         
         #### Safe Mode ####
-        width=self.maxLane-self.minLane
-        self.width = width
-        # print(width)
-
-        # if 0 <= self.minLane <= 10 and 80 <= self.maxLane <= 135 and width > 100:
-        #     center = self.maxLane - self.__LANEWIGHT//2
-        # elif 35 <= self.minLane <= 80 and self.maxLane >= 149 and width > 100:
-        #     center = self.minLane + self.__LANEWIGHT//2
+        self.width=self.maxLane-self.minLane
+        # print(self.width)
+        
+        # if self.__turn_mode == 'None':
+        #     if 0 <= self.minLane <= 10 and 80 <= self.maxLane <= 135 and self.width > 100:
+        #         center = self.maxLane - self.__LANEWIGHT//2
+        #         print('Change Max', self.minLane, self.maxLane)
+        #     elif 35 <= self.minLane <= 80 and self.maxLane >= 149 and self.width > 100:
+        #         center = self.minLane + self.__LANEWIGHT//2
+        #         print('Change Min', self.minLane, self.maxLane)
 
         #### Cua sớm ####
-        if (0 < width < self.__LANEWIGHT):
-            # print('Cua som')
+        if (0 < self.width < self.__LANEWIGHT):
             if (center < int(frame.shape[1]/2)):
-                center -= self.__LANEWIGHT - width
+                center -= self.__LANEWIGHT - self.width
             else :
-                center += self.__LANEWIGHT - width
+                center += self.__LANEWIGHT - self.width
 
         #### Error ####
         error = frame.shape[1]//2 - center
@@ -126,39 +127,28 @@ class Controller:
         Car.OLED_Print(f"{self.maxLane}", line = 2, left = 0)
         Car.OLED_Print(f"{self.width}", line = 3, left = 0)
     
-    def __timer_intersection(self, time_straight, time_turn, angle_turn, velo):
+    def __timer_intersection(self, time_turn, angle_turn, velo):
         Car.setSpeed_rad(velo)
-        ### Stage 1 ###
-        # print('111111111111111111111')
-        # Car.setAngle(5) #### Set Angle
 
-        # start_time = time.time()
-        # while(time.time() - start_time < time_straight):
-        #     ### Safe Mode ###
-        #     if Car.button == 3:
-        #         Car.setAngle(5)
-        #         Car.setSpeed_rad(velo)
-        #     elif Car.button == 2:
-        #         Car.setAngle(0)
-        #         Car.setSpeed_rad(0)
+        if self.width >= 110:
+            print('Timerrrrrrrrrrrrrrrrrr')
+            Car.setAngle(angle_turn) #### Set Angle
 
-        # self.__turn_mode = 'None'
+            start_time = time.time()
+            while(time.time() - start_time < time_turn):
+                ### Safe Mode ###
+                if Car.button == 3:
+                    Car.setAngle(angle_turn)
+                    Car.setSpeed_rad(velo)
+                elif Car.button == 2:
+                    Car.setAngle(0)
+                    Car.setSpeed_rad(0)
 
-        ### Stage 2 ###
-        print('22222222222222222222222222')
-        Car.setAngle(angle_turn) #### Set Angle
+            self.__turn_mode = 'None'
+        else: 
+            Car.setAngle(self.__sendBack_angle+5)
+            Car.setSpeed_rad(self.__sendBack_speed)
 
-        start_time = time.time()
-        while(time.time() - start_time < time_turn):
-            ### Safe Mode ###
-            if Car.button == 3:
-                Car.setAngle(angle_turn)
-                Car.setSpeed_rad(velo)
-            elif Car.button == 2:
-                Car.setAngle(0)
-                Car.setSpeed_rad(0)
-
-        self.__turn_mode = 'None'
 
     def __start_stop(self, sendBack_angle, sendBack_speed):
         if Car.button == 3:
@@ -171,23 +161,24 @@ class Controller:
                     self.__turnleft()
                 elif self.__turn_mode == 'right':
                     self.__turnright()
-                # elif self.__turn_mode == 'straight':
-                #     self.__straight()
+                elif self.__turn_mode == 'straight':
+                    self.__straight()
+
         elif Car.button == 2:
             Car.setAngle(0)
             Car.setSpeed_rad(0)
 
     def __turnright(self):
         print('Rightttttttttttttttttttttttt')
-        self.__timer_intersection(time_straight=0.4, time_turn=1, velo=28, angle_turn=-45)
+        self.__timer_intersection(time_turn=1, velo=25, angle_turn=-45)
 
     def __turnleft(self):
         print('Leftttttttttttttttttttttt')
-        self.__timer_intersection(time_straight=0.5, time_turn=1, velo=28, angle_turn=40)
+        self.__timer_intersection(time_turn=1, velo=25, angle_turn=40)
     
-    # def __straight(self):
-    #     print('Straightttttttttttttttttt')
-    #     self.__timer_intersection(time_straight=0.1, time_turn=1, velo=15, angle_turn=5)
+    def __straight(self):
+        print('Straightttttttttttttttttt')
+        self.__timer_intersection(time_turn=0.5, velo=28, angle_turn=6)
 
     def __linear(self, error):
         return int(-0.15*abs(error) + 25)
@@ -196,24 +187,22 @@ class Controller:
         self.__frame = frame
         ####### Angle Processing #######
         self.error = self.findingLane(frame, height)
-        sendBack_angle = self.__PID(self.error)
+        self.__sendBack_angle = self.__PID(self.error)
 
         ####### Speed Processing #######
-        # if self.error >= 80:
-        #     print(f"Errorrr: {self.error}")
-        sendBack_speed = self.__linear(self.error)
+        self.__sendBack_speed = self.__linear(self.error)
 
         ####### Show Info #######
-        self.__show(signal, area)
+        # self.__show(signal, area)
 
         #### Traffic Sign Processing ####
-        if signal != 'thang' and signal != 'None' and 1000 <= area <= 2000:
-            print(signal, area)
-            sendBack_speed = 10
+        # if signal != 'thang' and signal != 'None' and 1000 <= area <= 2000:
+        #     print(signal, area)
+        #     sendBack_speed = 15
 
         # self.__turn_mode = 'None'
         
-        if 2000 < area < 60000:
+        if 2200 <= area <= 4000:
             print(signal, area)
             if signal == 'camtrai':
                 self.__turn_mode = 'right'
@@ -228,6 +217,6 @@ class Controller:
 
         ####### Start-Stop #######
         # print(sendBack_speed)
-        self.__start_stop(sendBack_angle, sendBack_speed)
+        self.__start_stop(self.__sendBack_angle, self.__sendBack_speed)
 
-        return sendBack_angle, sendBack_speed
+        return self.__sendBack_angle, self.__sendBack_speed

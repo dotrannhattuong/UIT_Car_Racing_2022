@@ -25,7 +25,7 @@ import time
 # sess_options = onnxruntime.SessionOptions()
 
 ### Client ###
-from controller import Controller, road_lines, remove_small_contours
+from controller import Controller, road_lines, remove_small_contours, Car
 
 Control = Controller(1, 0.05)
 
@@ -35,7 +35,7 @@ SHOW_IMG = True
 PRINT = False
 session_lane = onnxruntime.InferenceSession( 'weights/lane_mod.onnx', None, providers=['CPUExecutionProvider'])
 input_name_lane = session_lane.get_inputs()[0].name
-session_sign = onnxruntime.InferenceSession('weights/sign_new.onnx', None, providers=['CUDAExecutionProvider'])
+session_sign = onnxruntime.InferenceSession('weights/my_sign_none.onnx', None, providers=['CUDAExecutionProvider'])
 input_name_sign = session_sign.get_inputs()[0].name
 
 def gstreamer_pipeline(
@@ -77,7 +77,7 @@ def parse_args():
         help='number of object categories [6]')
     #chọn model
     parser.add_argument(
-        '-m', '--model', type=str, default='update-416',
+        '-m', '--model', type=str, default='yolo_final-416',
         help=('[yolov3|yolov3-tiny|yolov3-spp|yolov4|yolov4-tiny]-'
               '[{dimension}], where dimension could be a single '
               'number (e.g. 288, 416, 608) or WxH (e.g. 416x256)'))
@@ -88,20 +88,24 @@ def parse_args():
 def loop_and_detect(cam, trt_yolo, conf_th, vis):
 
     # be tap lam quen :D
-    img = cv2.imread("betaplamquen.jpg")
-    for i in range(10):
-        boxes, confs, clss = trt_yolo.detect(img, conf_th)              #trả về boxes: chứa tọa độ bounding box, phần trăm dự đoán, và phân lớp
-        
-        img, class_TS, area = vis.draw_bboxes(
-            img, boxes, confs, clss, session=session_sign, inputname=input_name_sign)
-        print("taplamquen", class_TS)
-
+    imgs = os.listdir('warnup')
+    for img in imgs:
+        img = cv2.imread(os.path.join('warnup', img))
+        boxes, confs, clss = trt_yolo.detect(img, conf_th)
+        _ = vis.draw_bboxes(
+            img, boxes, confs, clss, session_sign, input_name_sign)
+    print("done warnup")
             
     # fps = 0.02
     # start_time_detect=time.time()
     frame = 0
 
     lst_area = np.zeros(5)
+    
+    #### Visualize ####
+    # result = cv2.VideoWriter('segment.avi', 
+    #                      cv2.VideoWriter_fourcc(*'MJPG'),
+    #                      5, (160, 40))
 
     while True:
         tic = time.time()
@@ -129,19 +133,25 @@ def loop_and_detect(cam, trt_yolo, conf_th, vis):
 
         # hàm vẽ bounding box lên ảnh, trả về ảnh đã vẽ, center của các đối tượng, phân lớp, và diện tích của boundingbox
         img, class_TS, area = vis.draw_bboxes(
-            img, boxes, confs, clss, session=session_sign, inputname=input_name_sign)
+            img, boxes, confs, clss, session=session_sign, inputname=input_name_sign, frame_id = frame)
 
         lst_area[1:] = lst_area[0:-1]
         lst_area[0] = area
         ############# Control Car ############# 
         pred = np.copy(DAsegmentation)
 
-        sendBack_angle, sendBack_speed = Control(pred, sendBack_speed=28, height=10, signal=class_TS, area=area)
+        sendBack_angle, sendBack_speed = Control(pred, sendBack_speed=28, height=9, signal=class_TS, area=area)
+
+        #### Visualize ####
+        # result.write(cv2.cvtColor(pred, cv2.COLOR_GRAY2RGB))
+        # cv2.waitKey(1)
+        # if Car.button == 2:  # ESC key: quit program
+        #     break
 
         #####------Show hình-----------------------
         # if SHOW_IMG:
             # img[:DAsegmentation.shape[0],img.shape[1]-DAsegmentation.shape[1]:,:]=DAsegmentation
-            # cv2.imshow('merge',img)
+            # cv2.imshow('merge', pred)
 
         frame += 1
         # toc = time.time()
@@ -157,7 +167,10 @@ def loop_and_detect(cam, trt_yolo, conf_th, vis):
         #     pass
     Car.setAngle(0)
     Car.setSpeed_cm(0)
+    
     # del Car
+    # result.release()
+    # print("The video was successfully saved")
 
 def main():
     args = parse_args()
@@ -188,7 +201,7 @@ def main():
     print("++++++++++++++++++Read model done+++++++++++++++++")
     vis = BBoxVisualization(cls_dict)                                           #gọi instance BBoxVisualization với thông số mặc định là danh sách các lớp
     # m=None
-    loop_and_detect(cam, trt_yolo, conf_th=0.5, vis=vis)                        #vào vòng lặp để dự đoán liên tục
+    loop_and_detect(cam, trt_yolo, conf_th=0.7, vis=vis)                        #vào vòng lặp để dự đoán liên tục
     
     cam.stream.release()                                                        #release camera
     cam.stop()
