@@ -23,11 +23,11 @@
 ## Drivable Area Segmentation
 ### Network Architecture
 
-![Picture1.png](picture/DA.png)
+![Picture1.png](../picture/DA.png)
 
 ### Data Augmentation
 
-![da.jpg](picture/data_aug.jpg)
+![da.jpg](../picture/data_aug.jpg)
 
 ### Training
 
