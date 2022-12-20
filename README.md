@@ -44,6 +44,13 @@ sh run.sh
 - Sử dụng timer để cua mù biển báo 
 - Sử dụng độ rộng đường để cua biển báo (Ưu điểm với các đội khác) => cua thành công 100% (xét trong trường hợp detect đúng biển báo)
 
+## <div align="center">Experiments</div>
+- Chú ý vị trí đặt camera
+- Chú ý phải đo lại thường xuyên độ rộng đường
+- Thông số PID
+- Line ngang
+- Xem xét xem sân có thể có trường hợp line đứt hay không?
+
 ## <div align="center">References</div>
 - Round 1_2: https://github.com/Syun1208/uit-car-racing-2022/tree/it-car/final_round
 - CEEC: https://github.com/vantin2912/UITCar2022
